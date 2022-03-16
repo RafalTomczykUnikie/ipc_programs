@@ -1,4 +1,8 @@
 cc_binary(
     name = "ipc_sender",
-    srcs = ["ipc_sender.cpp"],
+    srcs = ["main.cpp"],
+    deps = ["//lib/ipc_lib:ipc_lib"],
+    copts = [
+        "-Ilib/ipc_lib"
+    ]
 )
