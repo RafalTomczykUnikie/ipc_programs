@@ -7,7 +7,6 @@ class IpcCommand
 {
 
 public:
-
     enum ipc_command_tx_t : int
     {
         IPC_CONNECTION_CHECK,
@@ -24,6 +23,7 @@ public:
     enum ipc_command_rx_t : int
     {
         IPC_CONNECTION_OK,
+        IPC_FILE_DESCRIPTOR_OK,
         IPC_SEND_OVER_PIPE_CONFIRMED,
         IPC_SEND_OVER_MESSAGE_CONFIRMED,
         IPC_SEND_OVER_MESSAGE_QUEUE_CONFIRMED,
@@ -54,7 +54,6 @@ public:
 
     };
 
-
     struct IpcCommandRx
     {
         ipc_command_rx_t response;
@@ -64,8 +63,5 @@ public:
             
         };
     };
-private:
-
-    IpcCommandTx m_last_tx_command;
-    IpcCommandRx m_last_rx_command;
+      
 };

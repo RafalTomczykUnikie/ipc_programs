@@ -3,6 +3,9 @@
 #include <iostream>
 
 #include "domain_socket_server.hpp"
+#include "ipc_command_receiver.hpp"
+
+
 
 using namespace std;
 
@@ -18,13 +21,32 @@ int main(int argc, char* argv[])
     uint32_t len = 100;
     int fd = 0;
 
-    socket.receiveFileDesc(&fd);
-    socket.bind();
+    auto commander = IpcCommandReceiver(&socket);
+
+    IpcCommand::IpcCommandTx tx;
+    IpcCommand::IpcCommandRx rx;
+
+    commander.receiveCommand(&tx);
+    
+    if(tx.command == IpcCommand::ipc_command_tx_t::IPC_CONNECTION_CHECK)
+    {
+        rx.response = IpcCommand::ipc_command_rx_t::IPC_CONNECTION_OK;
+        cout << "command received properly!" << endl;
+        commander.sendResponse(rx);
+    }
 
     while(1)
     {
-        socket.recvMessage((uint8_t *) buffer, &len);
-        socket.sendMessage((uint8_t *) buffer, len);
-        sleep(1);        
+        IpcCommand::IpcCommandTx tx;
+        IpcCommand::IpcCommandRx rx;
+
+        commander.receiveCommand(&tx);
+
+        if(tx.command == IpcCommand::ipc_command_tx_t::IPC_CONNECTION_CHECK)
+        {
+            rx.response = IpcCommand::ipc_command_rx_t::IPC_CONNECTION_OK;
+            cout << "command received properly!" << endl;
+            commander.sendResponse(rx);
+        }
     }
 }

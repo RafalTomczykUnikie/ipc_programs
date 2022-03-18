@@ -173,7 +173,16 @@ UnixDomainSocketClient::socket_client_error_t UnixDomainSocketClient::connect(vo
 
 UnixDomainSocketClient::socket_client_error_t UnixDomainSocketClient::sendMessage(uint8_t *data, uint32_t len)
 {
-    sendto(m_sfd, data, len, 0, reinterpret_cast<sockaddr*>(&m_server_address), sizeof(sockaddr_un));
+    auto leng = sendto(m_sfd, data, len, 0, reinterpret_cast<sockaddr*>(&m_server_address), sizeof(sockaddr_un));
+    printf("len is equal to %d\r\n", leng);
+    if(leng == -1)
+    {
+        m_socket_error = DATA_SEND_ERROR;
+    }
+    else
+    {
+        m_socket_error = NO_ERROR;
+    }
     return m_socket_error;
 }
 
@@ -190,6 +199,6 @@ UnixDomainSocketClient::socket_client_error_t UnixDomainSocketClient::recvMessag
         printf("data not received\r\n");
     }
 
-    printf("len -> %d", *len);
+    printf("len -> %d\r\n", *len);
     return m_socket_error;
 }

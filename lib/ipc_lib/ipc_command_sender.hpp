@@ -6,10 +6,13 @@
 class IpcCommandSender : public IpcCommand
 {
 
-private:
-    UnixDomainSocketClient *m_client = nullptr;
-    IpcCommandTx m_current_command;
+
 public:
+
+    IpcCommandSender(UnixDomainSocketClient *client) : m_client(client)
+    {
+
+    };
 
     enum command_send_error_t : int
     {
@@ -25,4 +28,8 @@ public:
 
     command_send_error_t sendCommand(IpcCommandTx &command); 
     command_response_error_t receiveResponse(IpcCommandRx *response);
+
+    private:
+    UnixDomainSocketClient *m_client = nullptr;
+    IpcCommandTx m_current_command;
 };

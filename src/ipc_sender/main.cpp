@@ -9,7 +9,10 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
+
+
 #include "domain_socket_client.hpp"
+#include "ipc_command_sender.hpp"
 
 using namespace std;
 
@@ -26,26 +29,54 @@ int main(int argc, char* argv[])
     cout << client.bind() << endl;
     client.setServerAddress(SV_SERVER_SOCK_PATH);
 
-    cout << "Connected!" << endl;
-
-    char buffer[100] = "hello world from another process\r\n";
-    uint32_t len = 100;
     
-    // while(client.connect())
-    //     cout << "Connecting..." << endl;
 
-    int pfd[2] = {0,0};
-    client.close();
-    cout << client.connect() << endl;
-    cout << client.sendFileDesc(pfd[0]) << endl;
-    cout << client.bind() << endl;
+    auto commander = IpcCommandSender(&client);
 
+    IpcCommand::IpcCommandTx tx;
+    IpcCommand::IpcCommandRx rx;
+ 
+    tx.command = IpcCommand::ipc_command_tx_t::IPC_CONNECTION_CHECK;
+
+    auto err = commander.sendCommand(tx);
+    
+    while (err)
+    {
+        cout << "Cannot send data to server! Retrying..." << endl;
+        err = commander.sendCommand(tx);
+        sleep(1);
+    }
+    
+
+    commander.receiveResponse(&rx);
+    if(rx.response == IpcCommand::ipc_command_rx_t::IPC_CONNECTION_OK)
+    {
+        cout << "Data properly exchanged over IPC socket" << endl;
+    }
+    else 
+    {
+        cout << "response ->" << rx.response << endl;
+    }
 
     while(1)
-    {      
-    client.sendMessage((uint8_t*)buffer, len);
-    client.recvMessage((uint8_t*)buffer, &len);
-    sleep(1);
+    {   
+        err = commander.sendCommand(tx);
+        while (err)
+        {
+            cout << "Cannot send data to server! Retrying..." << endl;
+            err = commander.sendCommand(tx);
+            sleep(1);
+        }
+        commander.receiveResponse(&rx);
+        if(rx.response == IpcCommand::ipc_command_rx_t::IPC_CONNECTION_OK)
+        {
+            cout << "Data properly exchanged over IPC socket" << endl;
+        }
+        else 
+        {
+            cout << "response ->" << rx.response << endl;
+        }
+        sleep(1);
     } 
 
    
