@@ -5,6 +5,8 @@
 #include <cstdlib>
 #include <unistd.h>
 
+#include <glog/logging.h>
+
 #include "domain_socket_server.hpp"
 
 UnixDomainSocketServer::UnixDomainSocketServer(const char * socket_path, int socket_type) : 
@@ -43,7 +45,7 @@ UnixDomainSocketServer::socket_error_t UnixDomainSocketServer::buildAddress(void
 
     if(result == -1 && errno != ENOENT)
     {
-        printf("Cannot remove socket path");
+        LOG(ERROR) << ("Cannot remove socket path");
         m_socket_state = socket_server_state_t::FAULT;
         m_socket_error = PATH_REMOVE_ERROR;
         return m_socket_error;
@@ -68,7 +70,7 @@ UnixDomainSocketServer::socket_error_t UnixDomainSocketServer::bind(void)
     
     if(m_sfd == -1)
     {
-        printf("Cannot create socket");
+        LOG(ERROR) << "Cannot create socket";
         m_socket_state = socket_server_state_t::FAULT;
         m_socket_error = CREATE_ERROR;
         return m_socket_error;
@@ -78,7 +80,7 @@ UnixDomainSocketServer::socket_error_t UnixDomainSocketServer::bind(void)
 
     if(result == -1)
     {
-        printf("Cannot bind to socket");
+        LOG(ERROR) << "Cannot bind to socket";
         m_socket_state = socket_server_state_t::FAULT;
         m_socket_error = BIND_ERROR;
         return m_socket_error;
@@ -117,35 +119,34 @@ UnixDomainSocketServer::socket_error_t UnixDomainSocketServer::receiveFileDesc(i
 
     msgh.msg_control = controlMsg.buf;
     msgh.msg_controllen = sizeof(controlMsg.buf);
-    printf("receiving\r\n");
+
+    LOG(INFO) << "receiving\r\n";
 
     auto nr = recvmsg(m_sfd, &msgh, 0);
     if (nr == -1)
     {
-        printf("Cannot receive data properly!\n");
+        LOG(ERROR) << "Cannot receive data properly!\n";
         m_socket_error = DATA_RECEIVE_ERROR;
         return m_socket_error;
     }
-
-    printf("Data received %ld\n", nr);
 
     cmsghdr *cmsgp = CMSG_FIRSTHDR(&msgh);
 
     if (cmsgp == NULL || cmsgp->cmsg_len != CMSG_LEN(sizeof(int)))
     {
-        printf("bad cmsg header / message length\n");
+        LOG(ERROR) << "bad cmsg header / message length\n";
         m_socket_error = WRONG_MSG_HEADER;
         return m_socket_error;
     }
     if (cmsgp->cmsg_level != SOL_SOCKET)
     {
-        printf("cmsg_level != SOL_SOCKET\n");
+        LOG(ERROR) << "cmsg_level != SOL_SOCKET\n";
         m_socket_error = WRONG_MSG_HEADER;
         return m_socket_error;
     }
     if (cmsgp->cmsg_type != SCM_RIGHTS)
     {
-        printf("cmsg_type != SCM_RIGHTS\n");
+        LOG(ERROR) << "cmsg_type != SCM_RIGHTS\n";
         m_socket_error = WRONG_MSG_HEADER;
         return m_socket_error;
     }
@@ -153,7 +154,7 @@ UnixDomainSocketServer::socket_error_t UnixDomainSocketServer::receiveFileDesc(i
     if(fileDescriptor != nullptr)
     {
         memcpy(fileDescriptor, CMSG_DATA(cmsgp), sizeof(int));
-        printf("Received FD %d\n", *fileDescriptor);
+        LOG(ERROR) << "Received FD -> " << *fileDescriptor;
     }
 
     return m_socket_error;
@@ -170,13 +171,5 @@ UnixDomainSocketServer::socket_error_t UnixDomainSocketServer::recvMessage(uint8
 {
     socklen_t addrlen = sizeof(sockaddr_un);
     *len = recvfrom(m_sfd, data, *len, 0, reinterpret_cast<sockaddr*>(&m_client_addr), &addrlen);
-    if(*len)
-    {
-        printf("data received\r\n");
-    }
-    else
-    {
-        printf("data not received\r\n");
-    }
     return m_socket_error;
 }

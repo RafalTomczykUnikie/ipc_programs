@@ -58,5 +58,6 @@ private:
     socket_client_state_t m_socket_state;
     socket_client_error_t m_socket_error;
     int m_sfd;
+    int m_sfd_client;
 
 };

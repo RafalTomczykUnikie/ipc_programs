@@ -4,49 +4,36 @@
 
 #include "domain_socket_server.hpp"
 #include "ipc_command_receiver.hpp"
+#include "pipe_file_receiver.hpp"
 
-
+#include <glog/logging.h>
 
 using namespace std;
 
 int main(int argc, char* argv[])
 {
+    google::InitGoogleLogging(argv[0]);
+    FLAGS_alsologtostderr = 1;
+    FLAGS_minloglevel = 0;
+    FLAGS_colorlogtostderr = 1;
+
     auto socket = UnixDomainSocketServer(SV_SERVER_SOCK_PATH, SOCK_DGRAM);
+    LOG(INFO) << "Socket is opened" << endl;
 
-    cout << socket.buildAddress() << endl;
-    cout << socket.bind() << endl;
+    socket.buildAddress();
+    socket.bind();
     socket.setClientAddress(SV_CLIENT_SOCK_PATH);
-
-    char buffer[100];
-    uint32_t len = 100;
-    int fd = 0;
 
     auto commander = IpcCommandReceiver(&socket);
 
-    IpcCommand::IpcCommandTx tx;
-    IpcCommand::IpcCommandRx rx;
+    LOG(INFO) << "Ipc commander created" << endl;
 
-    commander.receiveCommand(&tx);
-    
-    if(tx.command == IpcCommand::ipc_command_tx_t::IPC_CONNECTION_CHECK)
-    {
-        rx.response = IpcCommand::ipc_command_rx_t::IPC_CONNECTION_OK;
-        cout << "command received properly!" << endl;
-        commander.sendResponse(rx);
-    }
+    PipeFileReceiver pipe(&commander);
+
+    pipe.connectionAgrrement();
 
     while(1)
     {
-        IpcCommand::IpcCommandTx tx;
-        IpcCommand::IpcCommandRx rx;
-
-        commander.receiveCommand(&tx);
-
-        if(tx.command == IpcCommand::ipc_command_tx_t::IPC_CONNECTION_CHECK)
-        {
-            rx.response = IpcCommand::ipc_command_rx_t::IPC_CONNECTION_OK;
-            cout << "command received properly!" << endl;
-            commander.sendResponse(rx);
-        }
+        sleep(1);
     }
 }

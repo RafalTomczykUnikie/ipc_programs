@@ -15,6 +15,8 @@ IpcCommandSender::command_send_error_t IpcCommandSender::sendCommand(IpcCommandS
         }
         return command_send_error_t::COMMAND_SENT_OK;
     }
+
+    return command_send_error_t::COMMAND_SENT_OK;
 }
 
 IpcCommandSender::command_response_error_t IpcCommandSender::receiveResponse(IpcCommandSender::IpcCommandRx *response)

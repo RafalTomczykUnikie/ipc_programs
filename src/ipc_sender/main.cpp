@@ -10,72 +10,48 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-
+#include <glog/logging.h>
 #include "domain_socket_client.hpp"
 #include "ipc_command_sender.hpp"
+#include "pipe_file_sender.hpp"
 
 using namespace std;
 
 int main(int argc, char* argv[])
 {
-    // Fancy command line processing skipped for brevity,
-    const auto ipc_receiver_name = "ipc_receiver";
-    
-    int x = 10;
+    google::InitGoogleLogging(argv[0]);
+    FLAGS_alsologtostderr = 1;
+    FLAGS_minloglevel = 0;
+    FLAGS_colorlogtostderr = 1;
     
     auto client = UnixDomainSocketClient(SV_CLIENT_SOCK_PATH, SOCK_DGRAM);
+    LOG(INFO) << "Client is created" << endl;
 
-    cout << client.buildAddress() << endl;
-    cout << client.bind() << endl;
+    client.buildAddress();
+    client.bind();
     client.setServerAddress(SV_SERVER_SOCK_PATH);
 
-    
+    LOG(INFO) << "Server address is set up!" << endl;
 
     auto commander = IpcCommandSender(&client);
 
-    IpcCommand::IpcCommandTx tx;
-    IpcCommand::IpcCommandRx rx;
- 
-    tx.command = IpcCommand::ipc_command_tx_t::IPC_CONNECTION_CHECK;
+    LOG(INFO) << "Command sender is working!" << endl;
 
-    auto err = commander.sendCommand(tx);
-    
-    while (err)
-    {
-        cout << "Cannot send data to server! Retrying..." << endl;
-        err = commander.sendCommand(tx);
-        sleep(1);
-    }
-    
+    PipeFileSender pipe(&commander);
 
-    commander.receiveResponse(&rx);
-    if(rx.response == IpcCommand::ipc_command_rx_t::IPC_CONNECTION_OK)
+    
+    while(client.connect())
     {
-        cout << "Data properly exchanged over IPC socket" << endl;
+        LOG(WARNING) << "Trying to connect to receiver server..." << endl;
+        sleep(1); 
     }
-    else 
-    {
-        cout << "response ->" << rx.response << endl;
-    }
+
+    client.close();
+
+    pipe.connectionAgrrement("file", "txt", 10000);
 
     while(1)
     {   
-        err = commander.sendCommand(tx);
-        while (err)
-        {
-            cout << "Cannot send data to server! Retrying..." << endl;
-            err = commander.sendCommand(tx);
-            sleep(1);
-        }
-        commander.receiveResponse(&rx);
-        if(rx.response == IpcCommand::ipc_command_rx_t::IPC_CONNECTION_OK)
-        {
-            cout << "Data properly exchanged over IPC socket" << endl;
-        }
-        else 
-        {
-            cout << "response ->" << rx.response << endl;
-        }
         sleep(1);
     } 
 

@@ -5,12 +5,14 @@
 #include <cstdlib>
 #include <unistd.h>
 
+#include <glog/logging.h>
 #include "domain_socket_client.hpp"
 
 UnixDomainSocketClient::UnixDomainSocketClient(const char * socket_path, int socket_type) :
     m_socket_path(socket_path),
     m_socket_type(socket_type),
-    m_socket_error(NO_ERROR)
+    m_socket_error(NO_ERROR),
+    m_sfd_client(0)
 {
     m_socket_state = socket_client_state_t::DISCONNECTED;
     m_sfd = -1;
@@ -34,7 +36,7 @@ UnixDomainSocketClient::socket_client_error_t UnixDomainSocketClient::bind(socke
 
     if(result == -1 && errno != ENOENT)
     {
-        printf("Cannot remove socket path");
+        LOG(ERROR) << ("Cannot remove socket path");
         return m_socket_error;
     }
     
@@ -42,7 +44,7 @@ UnixDomainSocketClient::socket_client_error_t UnixDomainSocketClient::bind(socke
     
     if(m_sfd == -1)
     {
-        printf("Cannot create socket");
+        LOG(ERROR) << ("Cannot create socket");
         m_socket_state = FAULT;
         m_socket_error = CREATE_ERROR;
         return m_socket_error;
@@ -56,7 +58,7 @@ UnixDomainSocketClient::socket_client_error_t UnixDomainSocketClient::bind(socke
     
     if(result == -1)
     {
-        printf("Cannot bind to socket");
+        LOG(ERROR) << ("Cannot bind to socket");
         m_socket_state = FAULT;
         m_socket_error = BIND_ERROR;
         return m_socket_error;
@@ -95,10 +97,10 @@ UnixDomainSocketClient::socket_client_error_t UnixDomainSocketClient::sendFileDe
     cmsgp->cmsg_type = SCM_RIGHTS;
     memcpy(CMSG_DATA(cmsgp), &fileDescriptor, sizeof(int));
 
-    ssize_t ns = sendmsg(m_sfd, &msgh, 0);
+    ssize_t ns = sendmsg(m_sfd_client, &msgh, 0);
     if (ns == -1)
     {
-        printf("Cannot send data properly!");
+        LOG(ERROR) << ("Cannot send data properly!");
         m_socket_error = DATA_SEND_ERROR;
         
     }
@@ -107,7 +109,7 @@ UnixDomainSocketClient::socket_client_error_t UnixDomainSocketClient::sendFileDe
 
 void UnixDomainSocketClient::close(void)
 {
-    ::close(m_sfd);
+    ::close(m_sfd_client);
 }
 
 UnixDomainSocketClient::socket_client_error_t UnixDomainSocketClient::buildAddress(void)
@@ -148,20 +150,20 @@ UnixDomainSocketClient::socket_client_error_t UnixDomainSocketClient::connect(vo
         return m_socket_error;
     }
 
-    m_sfd = socket(AF_UNIX, m_socket_type, 0);
+    m_sfd_client = socket(AF_UNIX, m_socket_type, 0);
 
     if (m_sfd == -1)
     {
-        printf("Cannot connect to socket with given path -> socket()");
+        LOG(ERROR) << ("Cannot connect to socket with given path -> socket()");
         m_socket_error = CREATE_ERROR;
         return m_socket_error;
     }
     
-    auto result = ::connect(m_sfd, (struct sockaddr *) &m_server_address, sizeof(struct sockaddr_un));
+    auto result = ::connect(m_sfd_client, (struct sockaddr *) &m_server_address, sizeof(struct sockaddr_un));
 
     if (result == -1) 
     {
-        printf("Cannot connect to socket with given path -> connect()");
+        LOG(ERROR) << ("Cannot connect to socket with given path -> connect()");
         m_socket_error = CONNECTION_ERROR;
         return m_socket_error;
     }
@@ -174,7 +176,6 @@ UnixDomainSocketClient::socket_client_error_t UnixDomainSocketClient::connect(vo
 UnixDomainSocketClient::socket_client_error_t UnixDomainSocketClient::sendMessage(uint8_t *data, uint32_t len)
 {
     auto leng = sendto(m_sfd, data, len, 0, reinterpret_cast<sockaddr*>(&m_server_address), sizeof(sockaddr_un));
-    printf("len is equal to %d\r\n", leng);
     if(leng == -1)
     {
         m_socket_error = DATA_SEND_ERROR;
@@ -190,15 +191,5 @@ UnixDomainSocketClient::socket_client_error_t UnixDomainSocketClient::recvMessag
 {
     socklen_t addrlen = sizeof(sockaddr_un);
     *len = recvfrom(m_sfd, data, *len, 0, reinterpret_cast<sockaddr*>(&m_server_address), &addrlen);
-    if(*len)
-    {
-        printf("data received\r\n");
-    }
-    else
-    {
-        printf("data not received\r\n");
-    }
-
-    printf("len -> %d\r\n", *len);
     return m_socket_error;
 }
