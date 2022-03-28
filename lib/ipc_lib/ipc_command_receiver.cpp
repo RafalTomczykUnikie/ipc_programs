@@ -1,3 +1,4 @@
+#include <glog/logging.h>
 #include "ipc_command_receiver.hpp"
 
 
@@ -28,6 +29,14 @@ IpcCommandReceiver::command_recv_error_t IpcCommandReceiver::receiveCommand(IpcC
     auto err = m_server->recvMessage(buffer, &size);
 
     memcpy(command, buffer, size);
+
+    if(command->command == IpcCommand::ipc_command_tx_t::IPC_SEND_FILE_DESCRIPTOR)
+    {
+        LOG(INFO) << "received file descriptor command" << std::endl;
+        auto & fd = command->file_descr.file_descriptor;
+        m_server->receiveFileDesc(&fd);
+        LOG(INFO) << "received file descriptor --> " << fd << std::endl;
+    }
 
     if(err != UnixDomainSocketServer::NO_ERROR)
     {

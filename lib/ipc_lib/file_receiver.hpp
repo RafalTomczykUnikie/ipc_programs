@@ -6,6 +6,8 @@
 
 class FileReceiver
 {  
+    virtual int RxTx(IpcCommand::ipc_command_tx_t tx, IpcCommand::ipc_command_rx_t rx_ok, IpcCommand::ipc_command_rx_t rx_nok) = 0;
+
 public:
     enum file_rx_err_t
     {
@@ -29,7 +31,8 @@ public:
     const FileReceiver &operator=(const FileReceiver &) = delete;
 
     virtual file_rx_agreement_t connectionAgrrement(void) = 0;
-    virtual file_rx_err_t receiveFile(void) = 0;
+    virtual file_rx_err_t receiveFile(const char *output_path) = 0;
+    
 
 protected:
     IpcCommandReceiver *m_command_receiver = nullptr;

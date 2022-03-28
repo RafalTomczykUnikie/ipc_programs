@@ -28,6 +28,8 @@ public:
 
     command_send_resp_error_t sendResponse(IpcCommandRx &response); 
     command_recv_error_t receiveCommand(IpcCommandTx *command);
+    command_recv_error_t receiveCommandFileDesc(IpcCommandTx *command);
+    
 
 private:
     UnixDomainSocketServer *m_server = nullptr;

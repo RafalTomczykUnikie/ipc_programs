@@ -21,6 +21,8 @@ UnixDomainSocketClient::UnixDomainSocketClient(const char * socket_path, int soc
 
 UnixDomainSocketClient::~UnixDomainSocketClient()
 {
+    ::close(m_sfd);
+    close();
     ::remove(m_socket_path.data());
 }
 
@@ -98,12 +100,13 @@ UnixDomainSocketClient::socket_client_error_t UnixDomainSocketClient::sendFileDe
     memcpy(CMSG_DATA(cmsgp), &fileDescriptor, sizeof(int));
 
     ssize_t ns = sendmsg(m_sfd_client, &msgh, 0);
+
     if (ns == -1)
     {
         LOG(ERROR) << ("Cannot send data properly!");
         m_socket_error = DATA_SEND_ERROR;
-        
     }
+
     return m_socket_error;
 }
 
@@ -134,12 +137,14 @@ UnixDomainSocketClient::socket_client_error_t UnixDomainSocketClient::setServerA
     m_server_address.sun_family = AF_UNIX;
     strncpy(m_server_address.sun_path, server_path.data(), server_path.length());
     m_addr.sun_path[0] = 0;
+    return socket_client_error_t::NO_ERROR;
 }
 
 UnixDomainSocketClient::socket_client_error_t UnixDomainSocketClient::connect(void)
 {
     if(m_socket_state == CONNECTED)
     {
+        LOG(INFO) << "Socket is already connected";
         m_socket_error = NO_ERROR;
         return m_socket_error;
     }

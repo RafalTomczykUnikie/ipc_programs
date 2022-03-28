@@ -1,19 +1,25 @@
+#include <glog/logging.h>
+
 #include "ipc_command_sender.hpp"
 
 IpcCommandSender::command_send_error_t IpcCommandSender::sendCommand(IpcCommandSender::IpcCommandTx &command)
 {
-    if(command.command != IpcCommand::IPC_SEND_FILE_DESCRIPTOR)
+    const auto size = sizeof(IpcCommandTx);
+    uint8_t buffer[size];
+    memcpy(buffer, &command, size);
+    m_current_command = command;
+    auto err = m_client->sendMessage(buffer, size);
+    
+    if(command.command == IpcCommand::IPC_SEND_FILE_DESCRIPTOR)
     {
-        const auto size = sizeof(IpcCommandTx);
-        uint8_t buffer[size];
-        memcpy(buffer, &command, size);
-        m_current_command = command;
-        auto err = m_client->sendMessage(buffer, size);
+        LOG(INFO) << "Send file descriptor command" << "\r\n";
+
+        err = m_client->sendFileDesc(command.file_descr.file_descriptor);
+
         if(err != UnixDomainSocketClient::NO_ERROR)
         {
             return command_send_error_t::COMMAND_SENT_ERROR;
         }
-        return command_send_error_t::COMMAND_SENT_OK;
     }
 
     return command_send_error_t::COMMAND_SENT_OK;

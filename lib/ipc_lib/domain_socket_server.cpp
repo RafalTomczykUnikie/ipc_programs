@@ -31,6 +31,7 @@ UnixDomainSocketServer::socket_error_t UnixDomainSocketServer::setClientAddress(
     m_client_addr.sun_family = AF_UNIX;
     strncpy(m_client_addr.sun_path, client_path.data(), client_path.length());
     m_client_addr.sun_path[0] = 0;
+    return socket_error_t::NO_ERROR;
 }
 
 UnixDomainSocketServer::socket_error_t UnixDomainSocketServer::buildAddress(void)
@@ -154,7 +155,7 @@ UnixDomainSocketServer::socket_error_t UnixDomainSocketServer::receiveFileDesc(i
     if(fileDescriptor != nullptr)
     {
         memcpy(fileDescriptor, CMSG_DATA(cmsgp), sizeof(int));
-        LOG(ERROR) << "Received FD -> " << *fileDescriptor;
+        LOG(INFO) << "Received FD -> " << *fileDescriptor;
     }
 
     return m_socket_error;

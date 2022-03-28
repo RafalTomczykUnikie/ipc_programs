@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <fstream>
 
 #include "ipc_command_sender.hpp"
 
@@ -30,7 +31,7 @@ public:
     const FileSender &operator=(const FileSender &) = delete;
 
     virtual file_tx_agreement_t connectionAgrrement(std::string file_name, std::string file_extension, size_t file_size) = 0;
-    virtual file_tx_err_t sendFile(void *file_ptr, int file_descriptor, std::string file_name, std::string file_extension) = 0;
+    virtual file_tx_err_t sendFile(const char * file_path) = 0;
 
 protected:
     IpcCommandSender *m_command_sender = nullptr;
