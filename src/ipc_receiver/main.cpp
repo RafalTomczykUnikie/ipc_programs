@@ -6,12 +6,11 @@
 #include "ipc_command_receiver.hpp"
 #include "pipe_file_receiver.hpp"
 #include "command_line_parser.hpp"
+#include "queue_file_receiver.hpp"
 
 #include <glog/logging.h>
 
 using namespace std;
-
-#define FILE_PATH "/home/rafal/Desktop/ipc_programs/src/ipc_receiver/"
 
 int main(int argc, char* argv[])
 {
@@ -19,6 +18,8 @@ int main(int argc, char* argv[])
     FLAGS_alsologtostderr = 1;
     FLAGS_minloglevel = 0;
     FLAGS_colorlogtostderr = 1;
+
+    FileReceiver * file_receiver = nullptr;
 
     std::string file_d;
     CommandLineParser parser(argv[0]);
@@ -49,26 +50,6 @@ int main(int argc, char* argv[])
         return 0;
     }
 
-    if(parser.isOptionFound("-m"))
-    {
-
-    }
-    else if(parser.isOptionFound("-q"))
-    {
-
-    }
-    else if(parser.isOptionFound("-p"))
-    {
-
-    }
-    else if(parser.isOptionFound("-s"))
-    {
-
-    }
-    else
-    {
-        LOG(INFO) << "No IPC METHOD specified, pipe is used as default!";
-    }
 
     auto socket = UnixDomainSocketServer(SV_SERVER_SOCK_PATH, SOCK_DGRAM);
     LOG(INFO) << "Socket is opened" << endl;
@@ -82,8 +63,32 @@ int main(int argc, char* argv[])
     LOG(INFO) << "Ipc commander created" << endl;
 
     PipeFileReceiver pipe(&commander);
+    QueueFileReceiver queue(&commander, "/test_queue");
 
-    auto a_err = pipe.connectionAgrrement();
+    if(parser.isOptionFound("-m"))
+    {
+
+    }
+    else if(parser.isOptionFound("-q"))
+    {
+        file_receiver = &queue
+    }
+    else if(parser.isOptionFound("-p"))
+    {
+        file_receiver = &pipe;
+    }
+    else if(parser.isOptionFound("-s"))
+    {
+        
+    }
+    else
+    {
+        file_receiver = &pipe;
+        LOG(INFO) << "No IPC METHOD specified, pipe is used as default!";
+    }
+
+
+    auto a_err = file_receiver->connectionAgrrement();
 
     if(a_err)
     {
@@ -91,7 +96,7 @@ int main(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    auto r_err = pipe.receiveFile(file_d.data());
+    auto r_err = file_receiver->receiveFile(file_d.data());
 
     if(r_err)
     {
@@ -100,5 +105,4 @@ int main(int argc, char* argv[])
     }
 
     return EXIT_SUCCESS;
-
 }

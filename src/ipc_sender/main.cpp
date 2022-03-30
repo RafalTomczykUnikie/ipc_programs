@@ -6,11 +6,10 @@
 #include "domain_socket_client.hpp"
 #include "ipc_command_sender.hpp"
 #include "pipe_file_sender.hpp"
+#include "queue_file_sender.hpp"
 #include "command_line_parser.hpp"
 
 using namespace std;
-
-#define FILE_PATH "/home/rafal/Desktop/ipc_programs/src/ipc_sender/google-chrome-stable_current_amd64.deb"
 
 int main(int argc, char* argv[])
 {
@@ -83,6 +82,9 @@ int main(int argc, char* argv[])
     LOG(INFO) << "Command sender is working!" << endl;
 
     PipeFileSender pipe(&commander);
+    QueueFileSender queue(&commander, "/test_queue");
+
+    FileSender * file_sender = &queue;
 
     while(client.connect())
     {
@@ -95,7 +97,7 @@ int main(int argc, char* argv[])
     auto name_pos = file_path.find_last_of('/');
     auto extension_pos = file_path.find_last_of('.');
     auto file_name = file_path.substr(name_pos + 1, extension_pos - name_pos - 1);
-    auto file_extension = file_path.substr(extension_pos + 1);
+    auto file_extension = extension_pos != std::string::npos ? file_path.substr(extension_pos + 1) : std::string("");
     
     LOG(INFO) << "Loading file..." << std::endl;
 
@@ -120,8 +122,8 @@ int main(int argc, char* argv[])
 
     LOG(INFO) << "File name is: -> " << file_name << " and file extension is -> " << file_extension << " with file size -> "<< size << std::endl;
     
-    pipe.connectionAgrrement(file_name, file_extension, size);
-    pipe.sendFile(file_path.data());
+    file_sender->connectionAgrrement(file_name, file_extension, size);
+    file_sender->sendFile(file_path.data());
    
     return 0;
 }

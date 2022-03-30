@@ -7,6 +7,7 @@ cc_binary(
     ],
     copts = [
         "-Ilib/ipc_lib",
-        "-std=c++11",
-    ]
+        "-std=c++2a",
+    ],
+    linkopts = ["-lrt"]
 )

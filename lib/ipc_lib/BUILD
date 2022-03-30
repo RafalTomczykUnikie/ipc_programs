@@ -4,5 +4,7 @@ cc_library(
     hdrs = glob(["*.hpp"]),
     visibility = ["//visibility:public"],
     deps = ["@com_github_google_glog//:glog"],
-    copts = ["-std=c++11"]
+    copts = ["-std=c++2a"],
+    linkopts = ["-lrt"]
+    
 )
