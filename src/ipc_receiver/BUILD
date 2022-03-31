@@ -9,5 +9,5 @@ cc_binary(
         "-Ilib/ipc_lib",
         "-std=c++2a",
     ],
-    linkopts = ["-lrt"]
+    linkopts = ["-lrt", "-lpthread"]
 )

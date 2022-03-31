@@ -7,6 +7,7 @@
 #include "pipe_file_receiver.hpp"
 #include "command_line_parser.hpp"
 #include "queue_file_receiver.hpp"
+#include "shm_file_receiver.hpp"
 
 #include <glog/logging.h>
 
@@ -64,14 +65,16 @@ int main(int argc, char* argv[])
 
     PipeFileReceiver pipe(&commander);
     QueueFileReceiver queue(&commander, "/test_queue");
+    ShmFileReceiver shm(&commander, "shm_buffer", "shm_sem_prod", "shm_sem_cons", 8096);
+
 
     if(parser.isOptionFound("-m"))
     {
-
+        file_receiver = &queue;
     }
     else if(parser.isOptionFound("-q"))
     {
-        file_receiver = &queue
+        file_receiver = &queue;
     }
     else if(parser.isOptionFound("-p"))
     {
@@ -79,7 +82,7 @@ int main(int argc, char* argv[])
     }
     else if(parser.isOptionFound("-s"))
     {
-        
+        file_receiver = &shm;
     }
     else
     {
@@ -87,9 +90,7 @@ int main(int argc, char* argv[])
         LOG(INFO) << "No IPC METHOD specified, pipe is used as default!";
     }
 
-
     auto a_err = file_receiver->connectionAgrrement();
-
     if(a_err)
     {
         LOG(ERROR) << "Problem with file transfer agreement. Aborting.";
@@ -97,7 +98,6 @@ int main(int argc, char* argv[])
     }
 
     auto r_err = file_receiver->receiveFile(file_d.data());
-
     if(r_err)
     {
         LOG(ERROR) << "Error during file reception";

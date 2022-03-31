@@ -8,6 +8,7 @@
 #include "pipe_file_sender.hpp"
 #include "queue_file_sender.hpp"
 #include "command_line_parser.hpp"
+#include "shm_file_sender.hpp"
 
 using namespace std;
 
@@ -19,6 +20,7 @@ int main(int argc, char* argv[])
     FLAGS_colorlogtostderr = 1;
 
     std::string file_d;
+    FileSender * file_sender = nullptr;
 
     CommandLineParser parser(argv[0]);
 
@@ -47,27 +49,6 @@ int main(int argc, char* argv[])
         return 0;
     }
 
-    if(parser.isOptionFound("-m"))
-    {
-
-    }
-    else if(parser.isOptionFound("-q"))
-    {
-
-    }
-    else if(parser.isOptionFound("-p"))
-    {
-
-    }
-    else if(parser.isOptionFound("-s"))
-    {
-
-    }
-    else
-    {
-        LOG(INFO) << "No IPC METHOD specified, pipe is used as default!";
-    }
-
     auto client = UnixDomainSocketClient(SV_CLIENT_SOCK_PATH, SOCK_DGRAM);
     LOG(INFO) << "Client is created" << endl;
 
@@ -83,8 +64,30 @@ int main(int argc, char* argv[])
 
     PipeFileSender pipe(&commander);
     QueueFileSender queue(&commander, "/test_queue");
+    ShmFileSender shm(&commander, "shm_buffer", "shm_sem_prod", "shm_sem_cons", 8096);
+    
 
-    FileSender * file_sender = &queue;
+    if(parser.isOptionFound("-m"))
+    {
+        file_sender = &queue;
+    }
+    else if(parser.isOptionFound("-q"))
+    {
+        file_sender = &queue;
+    }
+    else if(parser.isOptionFound("-p"))
+    {
+        file_sender = &pipe;
+    }
+    else if(parser.isOptionFound("-s"))
+    {
+        file_sender = &shm;
+    }
+    else
+    {
+        LOG(INFO) << "No IPC METHOD specified, pipe is used as default!";
+        file_sender = &pipe;
+    }
 
     while(client.connect())
     {
@@ -122,8 +125,19 @@ int main(int argc, char* argv[])
 
     LOG(INFO) << "File name is: -> " << file_name << " and file extension is -> " << file_extension << " with file size -> "<< size << std::endl;
     
-    file_sender->connectionAgrrement(file_name, file_extension, size);
-    file_sender->sendFile(file_path.data());
+    auto a_err = file_sender->connectionAgrrement(file_name, file_extension, size);
+    if(a_err)
+    {
+        LOG(ERROR) << "Problem with file transfer agreement. Aborting.";
+        return EXIT_FAILURE;
+    }
+    
+    auto r_err = file_sender->sendFile(file_path.data());
+    if(r_err)
+    {
+        LOG(ERROR) << "Error during file reception";
+        return EXIT_FAILURE;
+    }
    
     return 0;
 }
