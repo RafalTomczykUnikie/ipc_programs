@@ -1,6 +1,7 @@
 
 #include <ostream>
 #include <fstream>
+#include <memory>
 
 #include <glog/logging.h>
 #include "domain_socket_client.hpp"
@@ -9,6 +10,7 @@
 #include "queue_file_sender.hpp"
 #include "command_line_parser.hpp"
 #include "shm_file_sender.hpp"
+#include "message_file_sender.hpp"
 
 using namespace std;
 
@@ -20,7 +22,7 @@ int main(int argc, char* argv[])
     FLAGS_colorlogtostderr = 1;
 
     std::string file_d;
-    FileSender * file_sender = nullptr;
+    std::shared_ptr<FileSender> file_sender = nullptr;
 
     CommandLineParser parser(argv[0]);
 
@@ -28,10 +30,16 @@ int main(int argc, char* argv[])
     parser.addOption({"-m", "--messages", "program use messages as IPC METHOD", true});
     parser.addOption({"-q", "--queue", "program use queue as IPC METHOD", true});
     parser.addOption({"-p", "--pipe", "program use pipe as IPC METHOD", true});
-    parser.addOption({"-s", "--shm", "program use shared buffer as IPC METHOD", false});
-    parser.addOption({"-f", "--file", "file that will be copied", false});
+    parser.addOption({"-s", "--shm", "program use shared buffer as IPC METHOD", false, "buffer size"});
+    parser.addOption({"-f", "--file", "file that will be copied", false, "file name"});
     
     parser.parseOptions(argc, argv);
+    if(parser.isErrorFound())
+    {
+        LOG(ERROR) << "Error found during arguments parsing! Aborting!";
+        return EXIT_FAILURE;
+    }
+
     if(parser.isOptionFound("-h"))
     {
         parser.printHelp();
@@ -62,38 +70,57 @@ int main(int argc, char* argv[])
 
     LOG(INFO) << "Command sender is working!" << endl;
 
-    PipeFileSender pipe(&commander);
-    QueueFileSender queue(&commander, "/test_queue");
-    ShmFileSender shm(&commander, "shm_buffer", "shm_sem_prod", "shm_sem_cons", 8096);
-    
-
-    if(parser.isOptionFound("-m"))
-    {
-        file_sender = &queue;
-    }
-    else if(parser.isOptionFound("-q"))
-    {
-        file_sender = &queue;
-    }
-    else if(parser.isOptionFound("-p"))
-    {
-        file_sender = &pipe;
-    }
-    else if(parser.isOptionFound("-s"))
-    {
-        file_sender = &shm;
-    }
-    else
-    {
-        LOG(INFO) << "No IPC METHOD specified, pipe is used as default!";
-        file_sender = &pipe;
-    }
-
     while(client.connect())
     {
         LOG(WARNING) << "Trying to connect to receiver server..." << endl;
         sleep(1); 
     }
+
+    if(parser.isOptionFound("-m"))
+    {
+        file_sender = std::make_shared<MessageFileSender>(&commander, "/test_message");
+    }
+    else if(parser.isOptionFound("-q"))
+    {
+        file_sender = std::make_shared<QueueFileSender>(&commander, "/test_queue");
+    }
+    else if(parser.isOptionFound("-p"))
+    {
+        file_sender = std::make_shared<PipeFileSender>(&commander);
+    }
+    else if(parser.isOptionFound("-s"))
+    {
+        try 
+        {
+            auto num = std::stoul(parser.getOptionValue("-s"));
+            file_sender = std::make_shared<ShmFileSender>(&commander, "shm_buffer", "shm_sem_prod", "shm_sem_cons", num);
+        } 
+        catch(const std::exception &e)
+        {
+            LOG(ERROR) << "Exception detected in buffer size data. Aborting!";
+            LOG(ERROR) << e.what();
+            return EXIT_FAILURE;
+        }       
+    }
+    else
+    {
+        file_sender = std::make_shared<PipeFileSender>(&commander);
+        LOG(INFO) << "No IPC METHOD specified, pipe is used as default!";
+    }
+
+    auto command = IpcCommandFactory::getCommand(IpcCommand::ipc_command_tx_t::IPC_CONNECTION_CHECK);
+    auto response = IpcCommandFactory::getEmptyResponse();
+
+    auto c_rslt = commander.sendCommand(command);
+    auto r_rslt = commander.receiveResponse(&response);
+
+    if(c_rslt != IpcCommandSender::command_send_error_t::COMMAND_SENT_OK ||
+       r_rslt != IpcCommandSender::command_response_error_t::RESPONSE_OK ||
+       response.response != IpcCommand::IPC_CONNECTION_OK)
+    {
+        return EXIT_FAILURE;
+    }
+
 
     std::string file_path(file_d);
 

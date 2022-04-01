@@ -8,13 +8,16 @@ struct Option
     std::string option_short;
     std::string option_long;
     std::string option_description;
-    bool option_is_switch_only;
+     bool option_is_switch_only;
+    std::string option_param;
+   
 
-    Option(std::string a, std::string b, std::string c, bool d) :
+    Option(std::string a, std::string b, std::string c, bool d, std::string e = "") :
         option_short(a),
         option_long(b),
         option_description(c),
-        option_is_switch_only(d)
+        option_is_switch_only(d),
+        option_param(e)
     {
         
     };

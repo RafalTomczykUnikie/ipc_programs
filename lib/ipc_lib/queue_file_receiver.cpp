@@ -108,7 +108,8 @@ int QueueFileReceiver::RxTx(IpcCommand::ipc_command_tx_t tx, IpcCommand::ipc_com
 
     auto r_rslt = m_command_receiver->sendResponse(response);
 
-    if(r_rslt != IpcCommandReceiver::command_send_resp_error_t::RESPONSE_SENT_OK)
+    if(r_rslt != IpcCommandReceiver::command_send_resp_error_t::RESPONSE_SENT_OK || 
+       response.response == rx_nok)
     {
         return -1;
     }
@@ -132,7 +133,7 @@ QueueFileReceiver::file_rx_err_t QueueFileReceiver::receiveFile(const char *outp
 
     LOG(INFO) << "Starting file receiving...";
 
-    auto file_descriptor = open(out_path.data(), O_CREAT | O_WRONLY);
+    auto file_descriptor = open(out_path.data(), O_CREAT | O_WRONLY, 0666);
 
     if(file_descriptor == -1)
     {

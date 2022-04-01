@@ -12,7 +12,7 @@ ShmFileReceiver::ShmFileReceiver(IpcCommandReceiver *command_receiver, std::stri
     m_semaphore_name_cons(semaphore_name_consumer)
 {
     constexpr auto flags = O_RDWR;
-    constexpr auto perms = 0666;
+    constexpr auto perms = 0777;
     m_shm_file_descriptor = shm_open(m_shm_name.data(), flags, perms);
     if(m_shm_file_descriptor < 0)
     {
@@ -84,6 +84,10 @@ ShmFileReceiver::file_rx_agreement_t ShmFileReceiver::connectionAgrrement(void)
     LOG(INFO) << "File metadata exchanged properly - confirmation sent back";
     LOG(INFO) << "File that will be send is -> " << full_file_name << " with size = " << m_file_size << " bytes";
 
+    res = RxTx(IpcCommand::ipc_command_tx_t::IPC_SHM_BUFFER_SIZE, 
+         IpcCommand::ipc_command_rx_t::IPC_SHM_BUFFER_SIZE_OK,
+         IpcCommand::ipc_command_rx_t::IPC_SHM_BUFFER_SIZE_ERROR);
+
     if(res)
         return file_rx_agreement_t::FILE_AGR_ERROR;
 
@@ -115,19 +119,27 @@ int ShmFileReceiver::RxTx(IpcCommand::ipc_command_tx_t tx, IpcCommand::ipc_comma
     }
     else
     {
+        response.response = rx_ok;
+
         if(command.command == IpcCommand::ipc_command_tx_t::IPC_SEND_FILE_METADATA)
         {
             m_file_name = std::string(command.file_name);
             m_file_extension = std::string(command.file_extension);
             m_file_size = command.file_descr.file_size;
         }
-
-        response.response = rx_ok;
+        else if(command.command == IpcCommand::ipc_command_tx_t::IPC_SHM_BUFFER_SIZE)
+        {
+            if(m_shm_buff_size != command.file_descr.file_shared_buffer_size)
+            {
+                response.response = rx_nok;
+            }
+        }        
     }
 
     auto r_rslt = m_command_receiver->sendResponse(response);
 
-    if(r_rslt != IpcCommandReceiver::command_send_resp_error_t::RESPONSE_SENT_OK)
+    if(r_rslt != IpcCommandReceiver::command_send_resp_error_t::RESPONSE_SENT_OK || 
+       response.response == rx_nok)
     {
         return -1;
     }
@@ -151,7 +163,7 @@ ShmFileReceiver::file_rx_err_t ShmFileReceiver::receiveFile(const char *output_p
 
     LOG(INFO) << "Starting file receiving...";
 
-    auto file_descriptor = open(out_path.data(), O_CREAT | O_WRONLY);
+    auto file_descriptor = open(out_path.data(), O_CREAT | O_WRONLY, 0666);
 
     if(file_descriptor == -1)
     {

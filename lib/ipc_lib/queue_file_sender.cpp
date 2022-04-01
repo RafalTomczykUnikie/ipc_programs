@@ -16,7 +16,7 @@ QueueFileSender::QueueFileSender(IpcCommandSender *command_sender, std::string q
 
     const auto flags = O_RDWR | O_CREAT;
     
-    const mode_t mode = 0644;
+    const mode_t mode = 0777;
     
     m_queue_file_descrptors = mq_open(m_queue_name.data(), flags, mode, &m_attrs);
     

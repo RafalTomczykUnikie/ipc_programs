@@ -22,7 +22,8 @@ public:
         IPC_START_FILE_TRANSFER,
         IPC_ALL_DATA_SENT,
         IPC_DATA_SEND_ERROR,
-        IPC_SEND_DATA_AGAIN
+        IPC_SEND_DATA_AGAIN,
+        IPC_SHM_BUFFER_SIZE
     };
 
     enum ipc_command_rx_t : int
@@ -39,13 +40,16 @@ public:
         IPC_ALL_DATA_RECEIVED_OK,
         IPC_ALL_DATA_RECEIVED_ERROR,
         IPC_SEND_DATA_AGAIN_READY,
-        IPC_UNEXPECTED_COMMAND_ERROR
+        IPC_UNEXPECTED_COMMAND_ERROR,
+        IPC_SHM_BUFFER_SIZE_OK,
+        IPC_SHM_BUFFER_SIZE_ERROR
     };
 
     union file_desc
     {
         size_t file_size;
         int file_descriptor;
+        uint64_t file_shared_buffer_size;
     };
 
     struct IpcCommandTx
@@ -101,6 +105,14 @@ struct IpcCommandFactory
         IpcCommand::IpcCommandTx com;
         com.command = command;
         com.file_descr.file_descriptor = file_descriptor;
+        return com;
+    }
+
+    static IpcCommand::IpcCommandTx getCommand(IpcCommand::ipc_command_tx_t command, uint64_t shm_buffer_size)
+    {
+        IpcCommand::IpcCommandTx com;
+        com.command = command;
+        com.file_descr.file_shared_buffer_size = shm_buffer_size;
         return com;
     }
 };

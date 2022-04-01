@@ -13,7 +13,7 @@ ShmFileSender::ShmFileSender(IpcCommandSender *command_sender, std::string shm_n
     m_semaphore_name_cons(semaphore_name_consumer)
 {
     constexpr auto flags = O_RDWR | O_CREAT;
-    constexpr auto perms = 0666;
+    constexpr auto perms = 0777;
     m_shm_file_descriptor = shm_open(m_shm_name.data(), flags, perms);
     if(m_shm_file_descriptor < 0)
     {
@@ -100,6 +100,22 @@ ShmFileSender::file_tx_agreement_t ShmFileSender::connectionAgrrement(std::strin
     if(c_rslt != IpcCommandSender::command_send_error_t::COMMAND_SENT_OK ||
        r_rslt != IpcCommandSender::command_response_error_t::RESPONSE_OK ||
        response.response != IpcCommand::ipc_command_rx_t::IPC_FILE_METADATA_OK)
+    {
+        retVal = FILE_AGREMENT_ERROR;
+        return retVal;
+    }
+
+    LOG(INFO) << "File will be send over shared memory";
+
+    command = IpcCommandFactory::getCommand(IpcCommand::ipc_command_tx_t::IPC_SHM_BUFFER_SIZE, m_shm_buff_size);
+    response = IpcCommandFactory::getEmptyResponse();
+
+    c_rslt = m_command_sender->sendCommand(command);
+    r_rslt = m_command_sender->receiveResponse(&response);
+
+    if(c_rslt != IpcCommandSender::command_send_error_t::COMMAND_SENT_OK ||
+       r_rslt != IpcCommandSender::command_response_error_t::RESPONSE_OK ||
+       response.response != IpcCommand::ipc_command_rx_t::IPC_SHM_BUFFER_SIZE_OK)
     {
         retVal = FILE_AGREMENT_ERROR;
         return retVal;

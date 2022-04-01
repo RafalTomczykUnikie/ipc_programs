@@ -23,8 +23,21 @@ void CommandLineParser::parseOptions(int argc, char *argv[])
 {
     for(int i = 1; i < argc; i++)
     {
-        m_arguments.push_back(argv[i]);
-        
+        const char * str = argv[i];
+        if(str[0] == '-' && str[1] != '-')
+        {
+            auto size = strlen(str);
+            for(auto x = 1u; x < size; x++)
+            {
+                std::string arg = "-";
+                arg += str[x];
+                m_arguments.push_back(arg);
+            }
+        }
+        else
+        {
+            m_arguments.push_back(argv[i]);
+        }
     }
 
     for(auto idx = 0u; idx < m_arguments.size(); ++idx)
@@ -119,8 +132,14 @@ void CommandLineParser::printHelp(void)
 
     for(auto op : m_program_options)
     {
-        std::string is_switch = op.option_is_switch_only ? "[*]" : "[ ]";
-        std::cout << "    " << op.option_short << ", " << op.option_long << " > " << op.option_description << "\r\n";
+        std::string param_switch = "";
+        
+        if(op.option_param != "")
+        {
+            param_switch += " [" + op.option_param + "]";
+        }
+
+        std::cout << "    " << op.option_short << ", " << op.option_long << param_switch << " > " << op.option_description << "\r\n";
     }
     std::cout << "______________________________________________________________\r\n\r\n";
 }
