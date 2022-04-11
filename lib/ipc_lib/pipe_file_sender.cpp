@@ -1,18 +1,28 @@
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <fcntl.h>
-
+#include <iostream>
 #include <glog/logging.h>
 #include "pipe_file_sender.hpp"
 
-PipeFileSender::PipeFileSender(IpcCommandSender *command_sender) : 
-    FileSender(command_sender)
+PipeFileSender::PipeFileSender(IpcCommandSender *command_sender, std::string pipe_name) : 
+    FileSender(command_sender),
+    m_pipe_name(pipe_name)
 {
-    auto res = pipe(m_pipe_file_descrptors);
-    if(res != 0)
+    auto res = mkfifo(m_pipe_name.c_str(), 0777);
+
+    m_pipe_receiver_fd = open(m_pipe_name.c_str(), O_WRONLY);
+    if(m_pipe_receiver_fd < 0)
     {
         LOG(ERROR) << "Cannot create pipe!" << "\r\n";
         throw std::runtime_error("Cannot create a pipe");
     }
+}
+
+PipeFileSender::~PipeFileSender()
+{
+    close(m_pipe_receiver_fd);
 }
 
 PipeFileSender::file_tx_agreement_t PipeFileSender::connectionAgrrement(std::string file_name, std::string file_extension, size_t file_size)
@@ -60,22 +70,6 @@ PipeFileSender::file_tx_agreement_t PipeFileSender::connectionAgrrement(std::str
     if(c_rslt != IpcCommandSender::command_send_error_t::COMMAND_SENT_OK ||
        r_rslt != IpcCommandSender::command_response_error_t::RESPONSE_OK ||
        response.response != IpcCommand::ipc_command_rx_t::IPC_FILE_METADATA_OK)
-    {
-        retVal = FILE_AGREMENT_ERROR;
-        return retVal;
-    }
-
-    LOG(INFO) << "Sending file descriptor...";
-
-    command = IpcCommandFactory::getCommand(IpcCommand::ipc_command_tx_t::IPC_SEND_FILE_DESCRIPTOR, m_pipe_file_descrptors[0]);
-    response = IpcCommandFactory::getEmptyResponse();
-
-    c_rslt = m_command_sender->sendCommand(command);
-    r_rslt = m_command_sender->receiveResponse(&response);
-
-    if(c_rslt != IpcCommandSender::command_send_error_t::COMMAND_SENT_OK ||
-       r_rslt != IpcCommandSender::command_response_error_t::RESPONSE_OK ||
-       response.response != IpcCommand::ipc_command_rx_t::IPC_FILE_DESCRIPTOR_OK)
     {
         retVal = FILE_AGREMENT_ERROR;
         return retVal;
@@ -144,26 +138,28 @@ PipeFileSender::file_tx_err_t PipeFileSender::sendFile(const char * file_path)
     }
 
     auto s = 0;
-
+    auto idx = 0ul;
+    
     while(1)
-    {
+    {   
         s = read(file_descriptor, m_buf, PIPE_BUF);
         if(s == 0)
         {
             LOG(INFO) << "End of file is reached, finishing...";
             break;
         }
+
+        auto r = write(m_pipe_receiver_fd, m_buf, s);
         
-        auto r = write(m_pipe_file_descrptors[1], m_buf, s);
         if(r == -1)
-        {
-            LOG(ERROR) << "Error in writing to a pipe. Aborting!";
-            close(file_descriptor);
-            return sendError();
+        {   
+            continue;
         }
     }
 
     close(file_descriptor);
+
+    LOG(INFO) << "End of file is reached, finishing...";
 
     command = IpcCommandFactory::getCommand(IpcCommand::ipc_command_tx_t::IPC_ALL_DATA_SENT);
     response = IpcCommandFactory::getEmptyResponse();

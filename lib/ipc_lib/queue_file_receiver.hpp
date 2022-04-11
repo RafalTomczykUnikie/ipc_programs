@@ -1,6 +1,7 @@
 #pragma once
 #include <limits.h>
 #include <mqueue.h>
+#include <gtest/gtest_prod.h>
 #include "file_receiver.hpp"
 
 class QueueFileReceiver : public FileReceiver
@@ -22,4 +23,10 @@ public:
 
     virtual file_rx_agreement_t connectionAgrrement(void);
     virtual file_rx_err_t receiveFile(const char *output_path);
+
+private:
+    FRIEND_TEST(IpcQueueTest, TestConstructor);
+    FRIEND_TEST(IpcQueueTest, TestFileSendingReceivingSmallFile);
+    FRIEND_TEST(IpcQueueTest, TestFileSendingReceivingLargeFile);
+    FRIEND_TEST(IpcQueueTest, TestWrongFileAgreement);
 };

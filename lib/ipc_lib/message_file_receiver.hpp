@@ -1,4 +1,5 @@
 #pragma once
+#include <gtest/gtest_prod.h>
 #include <limits.h>
 #include <mqueue.h>
 #include "file_receiver.hpp"
@@ -19,7 +20,14 @@ class MessageFileReceiver : public FileReceiver
 
 public:
     MessageFileReceiver(IpcCommandReceiver *command_receiver, std::string queue_name);
+    virtual ~MessageFileReceiver();
 
     virtual file_rx_agreement_t connectionAgrrement(void);
     virtual file_rx_err_t receiveFile(const char *output_path);
+
+private:
+    FRIEND_TEST(IpcMessageTest, TestConstructor);
+    FRIEND_TEST(IpcMessageTest, TestFileSendingReceivingSmallFile);
+    FRIEND_TEST(IpcMessageTest, TestFileSendingReceivingLargeFile);
+    FRIEND_TEST(IpcMessageTest, TestWrongFileAgreement);
 };

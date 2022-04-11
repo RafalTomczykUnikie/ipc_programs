@@ -28,6 +28,11 @@ MessageFileReceiver::MessageFileReceiver(IpcCommandReceiver *command_receiver, s
     m_maximum_queue_size = m_attrs.mq_maxmsg;
 }
 
+MessageFileReceiver::~MessageFileReceiver()
+{
+    mq_close(m_queue_file_descrptors);
+}
+
 MessageFileReceiver::file_rx_agreement_t MessageFileReceiver::connectionAgrrement(void)
 {
     auto res = RxTx(IpcCommand::ipc_command_tx_t::IPC_CONNECTION_CHECK, 

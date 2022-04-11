@@ -86,7 +86,7 @@ int main(int argc, char* argv[])
     }
     else if(parser.isOptionFound("-p"))
     {
-        file_sender = std::make_shared<PipeFileSender>(&commander);
+        file_sender = std::make_shared<PipeFileSender>(&commander, "/tmp/testpipe");
     }
     else if(parser.isOptionFound("-s"))
     {
@@ -104,7 +104,7 @@ int main(int argc, char* argv[])
     }
     else
     {
-        file_sender = std::make_shared<PipeFileSender>(&commander);
+        file_sender = std::make_shared<PipeFileSender>(&commander, "/tmp/testpipe");
         LOG(INFO) << "No IPC METHOD specified, pipe is used as default!";
     }
 
@@ -162,7 +162,7 @@ int main(int argc, char* argv[])
     auto r_err = file_sender->sendFile(file_path.data());
     if(r_err)
     {
-        LOG(ERROR) << "Error during file reception";
+        LOG(ERROR) << "Error during file sending";
         return EXIT_FAILURE;
     }
    

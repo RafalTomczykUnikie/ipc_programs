@@ -3,8 +3,11 @@ cc_library(
     srcs = glob(["*.cpp"]),
     hdrs = glob(["*.hpp"]),
     visibility = ["//visibility:public"],
-    deps = ["@com_github_google_glog//:glog"],
-    copts = ["-std=c++2a"],
+    deps = [
+        "@com_github_google_glog//:glog",
+        "@com_google_googletest//:gtest_main"
+    ],
+    copts = ["-std=c++2a", "-DUNIT_TESTS_BUILD"],
     linkopts = ["-lrt", "-lpthread"]
     
 )

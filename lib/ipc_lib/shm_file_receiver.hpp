@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <semaphore.h>
+#include <gtest/gtest_prod.h>
 #include "file_receiver.hpp"
 
 class ShmFileReceiver : public FileReceiver
@@ -27,4 +28,10 @@ public:
     ~ShmFileReceiver();
     virtual file_rx_agreement_t connectionAgrrement(void);
     virtual file_rx_err_t receiveFile(const char *output_path);
+
+private:
+    FRIEND_TEST(IpcShmTest, TestConstructor);
+    FRIEND_TEST(IpcShmTest, TestFileSendingReceivingSmallFile);
+    FRIEND_TEST(IpcShmTest, TestFileSendingReceivingLargeFile);
+    FRIEND_TEST(IpcShmTest, TestWrongFileAgreement);
 };

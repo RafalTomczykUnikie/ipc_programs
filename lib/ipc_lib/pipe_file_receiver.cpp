@@ -2,14 +2,32 @@
 #include <fcntl.h>
 #include <sys/time.h>
 #include <poll.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <iostream>
 
 #include "pipe_file_receiver.hpp"
 #include "ipc_command.hpp"
 
 
-PipeFileReceiver::PipeFileReceiver(IpcCommandReceiver *command_receiver) : FileReceiver(command_receiver)
+PipeFileReceiver::PipeFileReceiver(IpcCommandReceiver *command_receiver, std::string pipe_name) : 
+    FileReceiver(command_receiver),
+    m_pipe_name(pipe_name)
 {
-   
+    auto res = mkfifo(m_pipe_name.c_str(), 0777);
+
+    m_pipe_receiver_fd = open(m_pipe_name.c_str(), O_RDONLY | O_NONBLOCK);
+    if(m_pipe_receiver_fd < 0)
+    {
+        LOG(ERROR) << "Cannot create pipe!" << "\r\n";
+        throw std::runtime_error("Cannot create a pipe");
+    }
+}
+
+PipeFileReceiver::~PipeFileReceiver()
+{
+    close(m_pipe_receiver_fd);
 }
 
 PipeFileReceiver::file_rx_agreement_t PipeFileReceiver::connectionAgrrement(void)
@@ -44,15 +62,6 @@ PipeFileReceiver::file_rx_agreement_t PipeFileReceiver::connectionAgrrement(void
 
     if(res)
         return file_rx_agreement_t::FILE_AGR_ERROR;
-
-    res = RxTx(IpcCommand::ipc_command_tx_t::IPC_SEND_FILE_DESCRIPTOR, 
-         IpcCommand::ipc_command_rx_t::IPC_FILE_DESCRIPTOR_OK,
-         IpcCommand::ipc_command_rx_t::IPC_UNEXPECTED_COMMAND_ERROR);
-
-    if(res)
-        return file_rx_agreement_t::FILE_AGR_ERROR;
-
-    LOG(INFO) << "Pipe file descriptor received properly! -> fd = " << m_pipe_receiver_fd;
 
     res = RxTx(IpcCommand::ipc_command_tx_t::IPC_CONNECTION_CHECK, 
          IpcCommand::ipc_command_rx_t::IPC_CONNECTION_OK,
@@ -128,43 +137,31 @@ PipeFileReceiver::file_rx_err_t PipeFileReceiver::receiveFile(const char *output
     {
         LOG(ERROR) << "Cannot write to specified path!";
     }
-
+    auto idx = 0ul;
     while(1)
     {
-        auto s = 0;
+        auto s = read(m_pipe_receiver_fd, m_buf, PIPE_BUF);
 
-        pollfd pfds[1];
-        pfds[0].fd = m_pipe_receiver_fd;
-        pfds[0].events = POLLIN;
-
-        auto retpoll = poll(pfds, 1, 10000);
-
-        if (retpoll > 0) 
+        if(s < 0)
         {
-            if (pfds[0].revents & POLLIN) 
-            {
-                s = read(m_pipe_receiver_fd, m_buf, PIPE_BUF);
-            }
-        }
-        else if (retpoll == 0)
-        {
-            LOG(INFO) << "pool timeout, finishing...";
-            break;
+            idx++;
+            usleep(1);
+            if(idx > 50)
+                break;
+            else
+                continue;
         }
         else
         {
-            LOG(ERROR) << "pool failed";
-            close(file_descriptor);
-            return FILE_RCV_ERROR;
+            idx = 0;
         }
-                
+
         auto r = write(file_descriptor, m_buf, s);
         
         if(r == -1)
         {
             LOG(ERROR) << "Error in writing to a file. Aborting!";
-            close(file_descriptor);
-            return FILE_RCV_ERROR;
+            break;
         }
 
         if(s < PIPE_BUF)

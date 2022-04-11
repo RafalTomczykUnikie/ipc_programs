@@ -2,6 +2,8 @@
 #include <string>
 #include <limits.h>
 #include <mqueue.h>
+#include <gtest/gtest_prod.h>
+
 #include "file_sender.hpp"
 
 class QueueFileSender : public FileSender
@@ -24,4 +26,10 @@ public:
 
     virtual file_tx_agreement_t connectionAgrrement(std::string file_name, std::string file_extension, size_t file_size);
     virtual file_tx_err_t sendFile(const char * file_path);
+
+private:
+    FRIEND_TEST(IpcQueueTest, TestConstructor);
+    FRIEND_TEST(IpcQueueTest, TestFileSendingReceivingSmallFile);
+    FRIEND_TEST(IpcQueueTest, TestFileSendingReceivingLargeFile);
+    FRIEND_TEST(IpcQueueTest, TestWrongFileAgreement);
 };

@@ -69,28 +69,6 @@ int main(int argc, char* argv[])
 
     auto commander = IpcCommandReceiver(&socket);
 
-    auto command = IpcCommandFactory::getEmptyCommand();
-    auto response = IpcCommandFactory::getEmptyResponse();
-    
-    auto c_rslt = commander.receiveCommand(&command);
-
-    if(c_rslt != IpcCommandReceiver::command_recv_error_t::COMMAND_RECV_OK)
-    {
-        return EXIT_FAILURE;
-    }
-
-    if(command.command != IpcCommand::ipc_command_tx_t::IPC_CONNECTION_CHECK)
-    {
-        response.response = IpcCommand::ipc_command_rx_t::IPC_UNEXPECTED_COMMAND_ERROR;
-    }
-
-    auto r_rslt = commander.sendResponse(response);
-
-    if(r_rslt != IpcCommandReceiver::command_send_resp_error_t::RESPONSE_SENT_OK || 
-       response.response == IpcCommand::ipc_command_rx_t::IPC_UNEXPECTED_COMMAND_ERROR)
-    {
-        return EXIT_FAILURE;
-    }
 
     LOG(INFO) << "Ipc commander created" << endl;
 
@@ -104,7 +82,7 @@ int main(int argc, char* argv[])
     }
     else if(parser.isOptionFound("-p"))
     {
-        file_receiver = std::make_shared<PipeFileReceiver>(&commander);
+        file_receiver = std::make_shared<PipeFileReceiver>(&commander, "/tmp/testpipe");
     }
     else if(parser.isOptionFound("-s"))
     {
@@ -136,8 +114,31 @@ int main(int argc, char* argv[])
     }
     else
     {
-        file_receiver = std::make_shared<PipeFileReceiver>(&commander);
+        file_receiver = std::make_shared<PipeFileReceiver>(&commander, "/tmp/testpipe");
         LOG(INFO) << "No IPC METHOD specified, pipe is used as default!";
+    }
+
+    auto command = IpcCommandFactory::getEmptyCommand();
+    auto response = IpcCommandFactory::getEmptyResponse();
+    
+    auto c_rslt = commander.receiveCommand(&command);
+
+    if(c_rslt != IpcCommandReceiver::command_recv_error_t::COMMAND_RECV_OK)
+    {
+        return EXIT_FAILURE;
+    }
+
+    if(command.command != IpcCommand::ipc_command_tx_t::IPC_CONNECTION_CHECK)
+    {
+        response.response = IpcCommand::ipc_command_rx_t::IPC_UNEXPECTED_COMMAND_ERROR;
+    }
+
+    auto r_rslt = commander.sendResponse(response);
+
+    if(r_rslt != IpcCommandReceiver::command_send_resp_error_t::RESPONSE_SENT_OK || 
+       response.response == IpcCommand::ipc_command_rx_t::IPC_UNEXPECTED_COMMAND_ERROR)
+    {
+        return EXIT_FAILURE;
     }
 
     auto a_err = file_receiver->connectionAgrrement();

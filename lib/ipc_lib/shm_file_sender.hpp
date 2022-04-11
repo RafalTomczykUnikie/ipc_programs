@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <semaphore.h>
+#include <gtest/gtest_prod.h>
 #include "file_sender.hpp"
 
 class ShmFileSender : public FileSender
@@ -27,4 +28,10 @@ public:
 
     virtual file_tx_agreement_t connectionAgrrement(std::string file_name, std::string file_extension, size_t file_size);
     virtual file_tx_err_t sendFile(const char * file_path);
+
+private:
+    FRIEND_TEST(IpcShmTest, TestConstructor);
+    FRIEND_TEST(IpcShmTest, TestFileSendingReceivingSmallFile);
+    FRIEND_TEST(IpcShmTest, TestFileSendingReceivingLargeFile);
+    FRIEND_TEST(IpcShmTest, TestWrongFileAgreement);
 };
