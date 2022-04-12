@@ -1,0 +1,230 @@
+@startuml
+
+enum command_send_error_t
+{
+    COMMAND_SENT_OK,
+    COMMAND_SENT_ERROR
+}
+
+enum command_response_error_t
+{
+    RESPONSE_OK,
+    RESPONSE_ERROR
+}
+
+class IpcCommandSender
+{
+-*m_client : UnixDomainSocketClient
+-m_current_command : IpcCommandTx
+
++sendCommand(IpcCommandTx &command) : command_send_error_t
++receiveResponse(IpcCommandRx *response) : command_response_error_t
+}
+
+IpcCommandSender +-- command_send_error_t
+IpcCommandSender +-- command_response_error_t
+
+class FileSender {
+-m_command_sender : IpcCommandSender*
+
++{abstract} connectionAgrrement(std::string file_name, std::string file_extension, size_t file_size) : file_tx_agreement_t
++{abstract} sendFile(const char * file_path) : file_tx_err_t
+}
+
+class MessageFileSender
+{
+-{static} constexpr MAX_BUF_SIZE = 8096u
+-{static} constexpr MAX_QUEUE_SIZE = 10u
+-m_maximum_data_size : const int
+-m_maximum_queue_size : const int
+-m_queue_file_descrptors : mqd_t 
+-m_queue_name : std::string 
+-m_attrs : mq_attr 
+-m_buffer[MAX_BUF_SIZE] : uint8_t
+
++MessageFileSender(IpcCommandSender *command_sender, std::string queue_name)
++~MessageFileSender()
++connectionAgrrement(std::string file_name, std::string file_extension, size_t file_size) : file_tx_agreement_t
++sendFile(const char * file_path) : file_tx_err_t
+}
+
+class QueueFileSender
+{
+-{static} constexpr MAX_BUF_SIZE = 8096u
+-{static} constexpr MAX_QUEUE_SIZE = 10u
+-m_maximum_data_size : const int
+-m_maximum_queue_size : const int
+-m_queue_file_descrptors : mqd_t 
+-m_queue_name : std::string 
+-m_attrs : mq_attr 
+-m_buffer[MAX_BUF_SIZE] : uint8_t
+
++MessageFileSender(IpcCommandSender *command_sender, std::string queue_name)
++~MessageFileSender()
++connectionAgrrement(std::string file_name, std::string file_extension, size_t file_size) : file_tx_agreement_t
++sendFile(const char * file_path) : file_tx_err_t
+}
+
+class ShmFileSender
+{
+-m_semaphore_handle_prod : sem_t*
+-m_semaphore_handle_cons : sem_t*
+-m_memptr : caddr_t
+-m_shm_file_descriptor : int
+-m_shm_buff_size : uint64_t
+-m_shm_name : std::string 
+-m_semaphore_name_prod : std::string 
+-m_semaphore_name_cons : std::string
+
++ShmFileSender(IpcCommandSender *command_sender, std::string shm_name, std::string semaphore_name_producer, std::string semaphore_name_consumer, uint64_t buffer_size)
++~ShmFileSender()
++connectionAgrrement(std::string file_name, std::string file_extension, size_t file_size) : file_tx_agreement_t
++sendFile(const char * file_path) : file_tx_err_t
+}
+
+class PipeFileSender
+{
+-m_pipe_receiver_fd : int
+-m_buf[PIPE_BUF] : uint8_t
+-m_pipe_name : std::string
+
++PipeFileSender(IpcCommandSender *command_sender, std::string pipe_name)
++~PipeFileSender()
++connectionAgrrement(std::string file_name, std::string file_extension, size_t file_size) : file_tx_agreement_t
++sendFile(const char * file_path) : file_tx_err_t
+}
+
+enum socket_client_state_t
+{
+    DISCONNECTED,
+    CONNECTED,
+    FAULT
+}
+
+enum socket_client_error_t
+{
+    NO_ERROR,
+    WRONG_STATE_ERROR,
+    DATA_SEND_ERROR,
+    DATA_RECEIVE_ERROR,
+    CREATE_ERROR,
+    CONNECTION_ERROR,
+    WRONG_MSG_HEADER,
+    BIND_ERROR
+}
+
+enum socket_bind_t
+{
+    BIND_TO_CLIENT,
+    BIND_TO_SERVER
+}
+
+class UnixDomainSocketClient
+{
+
++UnixDomainSocketClient(const char * socket_path, int socket_type);
++~UnixDomainSocketClient();
+
++ sendFileDesc(int fileDescriptor = 0) : socket_client_error_t
++recvMessage(uint8_t *data, uint32_t *len) : socket_client_error_t
++sendMessage(uint8_t *data, uint32_t len) : socket_client_error_t
++buildAddress(void) : socket_client_error_t
++connect(void) : socket_client_error_t
++bind(socket_bind_t bind_sel = BIND_TO_CLIENT) : socket_client_error_t
++setServerAddress(std::string server_path) : socket_client_error_t
++getState(void) : socket_client_error_t
++close(void) : void
+
+
+-m_socket_path : std::string
+-m_addr : sockaddr_un
+-m_server_address : sockaddr_un 
+-m_socket_type : int
+-m_socket_state : socket_client_state_t
+-m_socket_error : socket_client_error_t 
+-m_sfd : int
+-m_sfd_client : int
+}
+
+
+enum ipc_command_tx_t
+{
+    IPC_CONNECTION_CHECK,
+    IPC_SEND_FILE_METADATA,
+    IPC_SEND_FILE_DESCRIPTOR,
+    IPC_SEND_OVER_PIPE,
+    IPC_SEND_OVER_MESSAGE,
+    IPC_SEND_OVER_MESSAGE_QUEUE,
+    IPC_SEND_OVER_SHARED_BUFFER,
+    IPC_START_FILE_TRANSFER,
+    IPC_ALL_DATA_SENT,
+    IPC_DATA_SEND_ERROR,
+    IPC_SEND_DATA_AGAIN,
+    IPC_SHM_BUFFER_SIZE
+}
+
+enum ipc_command_rx_t
+{
+    IPC_CONNECTION_OK,
+    IPC_FILE_METADATA_OK,
+    IPC_FILE_DESCRIPTOR_OK,
+    IPC_SEND_OVER_PIPE_CONFIRMED,
+    IPC_SEND_OVER_MESSAGE_CONFIRMED,
+    IPC_SEND_OVER_MESSAGE_QUEUE_CONFIRMED,
+    IPC_SEND_OVER_SHARED_BUFFER_CONFIRMED,
+    IPC_DIFFERENT_IPC_METHOD,
+    IPC_START_FILE_TRANSFER_CONFIRMED,
+    IPC_ALL_DATA_RECEIVED_OK,
+    IPC_ALL_DATA_RECEIVED_ERROR,
+    IPC_SEND_DATA_AGAIN_READY,
+    IPC_UNEXPECTED_COMMAND_ERROR,
+    IPC_SHM_BUFFER_SIZE_OK,
+    IPC_SHM_BUFFER_SIZE_ERROR
+}
+
+entity file_desc
+{
++file_size : size_t 
++file_descriptor : int 
++file_shared_buffer_size : uint64_t 
+}
+
+entity IpcCommandTx
+{
++command : ipc_command_tx_t
++file_descr : file_desc 
++file_name[200] : char 
++file_extension[50] : char
++IpcCommandTx();
+}
+
+entity IpcCommandRx
+{
++response : ipc_command_rx_t
++IpcCommandRx()
+}    
+
+class IpcCommand
+{
+  
+}
+
+IpcCommand +-- IpcCommandRx
+IpcCommand +-- IpcCommandTx
+IpcCommand +-- file_desc
+IpcCommand +-- ipc_command_tx_t
+IpcCommand +-- ipc_command_rx_t
+
+UnixDomainSocketClient +-- socket_client_state_t
+UnixDomainSocketClient +-- socket_client_error_t
+UnixDomainSocketClient +-- socket_bind_t
+
+FileSender <|-- MessageFileSender
+FileSender <|-- QueueFileSender
+FileSender <|-- ShmFileSender
+FileSender <|-- PipeFileSender
+
+FileSender *-- IpcCommandSender
+IpcCommandSender *-- UnixDomainSocketClient
+IpcCommandSender *-- IpcCommand
+@enduml

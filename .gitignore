@@ -2,3 +2,4 @@ bazel*
 .vscode/
 token
 *.txt
+out/
