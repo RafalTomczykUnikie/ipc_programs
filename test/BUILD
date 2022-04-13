@@ -1,5 +1,5 @@
 cc_test(
-    name = "ipc_sender_tests",
+    name = "ipc_tests",
     srcs = [
         "ipcMessageTest.cpp",
         "ipcPipeTest.cpp",

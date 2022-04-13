@@ -20,6 +20,7 @@ class QueueFileReceiver : public FileReceiver
 
 public:
     QueueFileReceiver(IpcCommandReceiver *command_receiver, std::string queue_name);
+    virtual ~QueueFileReceiver();
 
     virtual file_rx_agreement_t connectionAgrrement(void);
     virtual file_rx_err_t receiveFile(const char *output_path);

@@ -22,7 +22,7 @@ private:
 
 public:
     QueueFileSender(IpcCommandSender *command_sender, std::string queue_name);
-    ~QueueFileSender();
+    virtual ~QueueFileSender();
 
     virtual file_tx_agreement_t connectionAgrrement(std::string file_name, std::string file_extension, size_t file_size);
     virtual file_tx_err_t sendFile(const char * file_path);

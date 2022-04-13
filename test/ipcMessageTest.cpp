@@ -282,7 +282,6 @@ TEST_F(IpcMessageTest, TestWrongFileAgreement)
 
     ifstream in_file(in_file_name.c_str(), ios::binary);
     in_file.seekg(0, ios::end);
-    int in_file_size = in_file.tellg();
     in_file.seekg(0);
 
     FileSender::file_tx_agreement_t err_snd;

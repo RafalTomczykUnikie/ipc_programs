@@ -15,7 +15,7 @@ PipeFileReceiver::PipeFileReceiver(IpcCommandReceiver *command_receiver, std::st
     FileReceiver(command_receiver),
     m_pipe_name(pipe_name)
 {
-    auto res = mkfifo(m_pipe_name.c_str(), 0777);
+    mkfifo(m_pipe_name.c_str(), 0777);
 
     m_pipe_receiver_fd = open(m_pipe_name.c_str(), O_RDONLY | O_NONBLOCK);
     if(m_pipe_receiver_fd < 0)
@@ -28,6 +28,7 @@ PipeFileReceiver::PipeFileReceiver(IpcCommandReceiver *command_receiver, std::st
 PipeFileReceiver::~PipeFileReceiver()
 {
     close(m_pipe_receiver_fd);
+    remove(m_pipe_name.c_str());
 }
 
 PipeFileReceiver::file_rx_agreement_t PipeFileReceiver::connectionAgrrement(void)

@@ -24,7 +24,7 @@ private:
 
 public:
     ShmFileSender(IpcCommandSender *command_sender, std::string shm_name, std::string semaphore_name_producer, std::string semaphore_name_consumer, uint64_t buffer_size);
-    ~ShmFileSender();
+    virtual ~ShmFileSender();
 
     virtual file_tx_agreement_t connectionAgrrement(std::string file_name, std::string file_extension, size_t file_size);
     virtual file_tx_err_t sendFile(const char * file_path);

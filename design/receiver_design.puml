@@ -1,0 +1,231 @@
+@startuml
+
+enum command_send_error_t
+{
+    COMMAND_SENT_OK,
+    COMMAND_SENT_ERROR
+}
+
+enum command_response_error_t
+{
+    RESPONSE_OK,
+    RESPONSE_ERROR
+}
+
+class IpcCommandReceiver
+{
+-*m_client : UnixDomainSocketClient
+-m_current_command : IpcCommandTx
+
+sendResponse(IpcCommandRx &response) : command_send_resp_error_t
+receiveCommand(IpcCommandTx *command) : command_recv_error_t
+receiveCommandFileDesc(IpcCommandTx *command) : command_recv_error_t
+}
+
+
+
+IpcCommandReceiver +-- command_send_error_t
+IpcCommandReceiver +-- command_response_error_t
+
+class FileReceiver {
+#m_command_receiver : IpcCommandReceiver *
+#m_file_name : std::string
+#m_file_extension : std::string 
+#m_file_size : size_t
+
+-RxTx(IpcCommand::ipc_command_tx_t tx, IpcCommand::ipc_command_rx_t rx_ok, IpcCommand::ipc_command_rx_t rx_nok) : int
++{abstract} connectionAgrrement() : file_rx_agreement_t
++{abstract} receiveFile(const char *output_path) : file_rx_err_t
+}
+
+class MessageFileReceiver
+{
+-{static} constexpr MAX_BUF_SIZE = 8096u
+-m_maximum_data_size : const int
+-m_maximum_queue_size : const int
+-m_queue_file_descrptors : mqd_t 
+-m_queue_name : std::string 
+-m_attrs : mq_attr 
+-m_buffer[MAX_BUF_SIZE] : uint8_t
+
+-RxTx(IpcCommand::ipc_command_tx_t tx, IpcCommand::ipc_command_rx_t rx_ok, IpcCommand::ipc_command_rx_t rx_nok) : int
++MessageFileReceiver(IpcCommandReceiver *command_receiver, std::string queue_name)
++~MessageFileReceiver()
++connectionAgrrement(void) : file_rx_agreement_t
++receiveFile(const char * output_path) : file_rx_err_t
+}
+
+class QueueFileReceiver
+{
+-{static} constexpr MAX_BUF_SIZE = 8096u
+-m_maximum_data_size : const int
+-m_maximum_queue_size : const int
+-m_queue_file_descrptors : mqd_t 
+-m_queue_name : std::string 
+-m_attrs : mq_attr 
+-m_buffer[MAX_BUF_SIZE] : uint8_t
+
+-RxTx(IpcCommand::ipc_command_tx_t tx, IpcCommand::ipc_command_rx_t rx_ok, IpcCommand::ipc_command_rx_t rx_nok) : int
++QueueFileReceiver(IpcCommandReceiver *command_receiver, std::string queue_name)
++~QueueFileReceiver()
++connectionAgrrement(void) : file_rx_agreement_t
++receiveFile(const char * output_path) : file_rx_err_t
+}
+
+class ShmFileReceiver
+{
+-m_semaphore_handle_prod : sem_t*
+-m_semaphore_handle_cons : sem_t*
+-m_memptr : caddr_t
+-m_shm_file_descriptor : int
+-m_shm_buff_size : uint64_t
+-m_shm_name : std::string 
+-m_semaphore_name_prod : std::string 
+-m_semaphore_name_cons : std::string
+
+-RxTx(IpcCommand::ipc_command_tx_t tx, IpcCommand::ipc_command_rx_t rx_ok, IpcCommand::ipc_command_rx_t rx_nok) : int
++ShmFileReceiver(IpcCommandSender *command_sender, std::string shm_name, std::string semaphore_name_producer, std::string semaphore_name_consumer, uint64_t buffer_size)
++~ShmFileReceiver()
++connectionAgrrement(void) : file_rx_agreement_t
++receiveFile(const char * output_path) : file_rx_err_t
+}
+
+class PipeFileReceiver
+{
+-m_pipe_receiver_fd : int
+-m_buf[PIPE_BUF] : uint8_t
+-m_pipe_name : std::string
+
+-RxTx(IpcCommand::ipc_command_tx_t tx, IpcCommand::ipc_command_rx_t rx_ok, IpcCommand::ipc_command_rx_t rx_nok) : int
++PipeFileReceiver(IpcCommandReceiver *command_receiver, std::string pipe_name)
++~PipeFileReceiver()
++connectionAgrrement() : file_tx_agreement_t
++sendFile(const char *output_path ) : file_tx_err_t
+}
+
+enum socket_server_state_t
+{
+    CLOSED,
+    OPEN,
+    FAULT
+}
+
+enum socket_error_t
+{
+    NO_ERROR,
+    PATH_REMOVE_ERROR,
+    CREATE_ERROR,
+    BIND_ERROR,
+    DATA_RECEIVE_ERROR,
+    DATA_SEND_ERROR,
+    WRONG_MSG_HEADER,
+    WRONG_STATE_ERROR
+}
+
+class UnixDomainSocketServer
+{
+
++UnixDomainSocketServer(const char * socket_path, int socket_type);
++~UnixDomainSocketServer();
+
++receiveFileDesc(int *fileDescriptor = nullptr) : socket_error_t
++sendMessage(uint8_t *data, uint32_t len) : socket_error_t 
++recvMessage(uint8_t *data, uint32_t *len) : socket_error_t 
++bind(void) : socket_error_t
++buildAddress(void) : socket_error_t
+
++setClientAddress(std::string client_path) : socket_error_t
++getSocketState(void) : socket_server_state_t 
++getSocketType(void) : int 
+
+
+-m_socket_path : std::string 
+-int m_socket_type : int
+-int  m_sfd : int
+-sockaddr_un m_addr : sockaddr_un
+-sockaddr_un m_client_addr : sockaddr_un
+-m_socket_state : socket_server_state_t
+-m_socket_error : socket_error_t
+}
+
+
+enum ipc_command_tx_t
+{
+    IPC_CONNECTION_CHECK,
+    IPC_SEND_FILE_METADATA,
+    IPC_SEND_FILE_DESCRIPTOR,
+    IPC_SEND_OVER_PIPE,
+    IPC_SEND_OVER_MESSAGE,
+    IPC_SEND_OVER_MESSAGE_QUEUE,
+    IPC_SEND_OVER_SHARED_BUFFER,
+    IPC_START_FILE_TRANSFER,
+    IPC_ALL_DATA_SENT,
+    IPC_DATA_SEND_ERROR,
+    IPC_SEND_DATA_AGAIN,
+    IPC_SHM_BUFFER_SIZE
+}
+
+enum ipc_command_rx_t
+{
+    IPC_CONNECTION_OK,
+    IPC_FILE_METADATA_OK,
+    IPC_FILE_DESCRIPTOR_OK,
+    IPC_SEND_OVER_PIPE_CONFIRMED,
+    IPC_SEND_OVER_MESSAGE_CONFIRMED,
+    IPC_SEND_OVER_MESSAGE_QUEUE_CONFIRMED,
+    IPC_SEND_OVER_SHARED_BUFFER_CONFIRMED,
+    IPC_DIFFERENT_IPC_METHOD,
+    IPC_START_FILE_TRANSFER_CONFIRMED,
+    IPC_ALL_DATA_RECEIVED_OK,
+    IPC_ALL_DATA_RECEIVED_ERROR,
+    IPC_SEND_DATA_AGAIN_READY,
+    IPC_UNEXPECTED_COMMAND_ERROR,
+    IPC_SHM_BUFFER_SIZE_OK,
+    IPC_SHM_BUFFER_SIZE_ERROR
+}
+
+entity file_desc
+{
++file_size : size_t 
++file_descriptor : int 
++file_shared_buffer_size : uint64_t 
+}
+
+entity IpcCommandTx
+{
++command : ipc_command_tx_t
++file_descr : file_desc 
++file_name[200] : char 
++file_extension[50] : char
++IpcCommandTx();
+}
+
+entity IpcCommandRx
+{
++response : ipc_command_rx_t
++IpcCommandRx()
+}    
+
+class IpcCommand
+{
+  
+}
+
+IpcCommand +-- IpcCommandRx
+IpcCommand +-- IpcCommandTx
+IpcCommand +-- file_desc
+IpcCommand +-- ipc_command_tx_t
+IpcCommand +-- ipc_command_rx_t
+
+UnixDomainSocketServer +-- socket_server_state_t
+UnixDomainSocketServer +-- socket_error_t
+
+FileReceiver <|-- MessageFileReceiver
+FileReceiver <|-- QueueFileReceiver
+FileReceiver <|-- ShmFileReceiver
+FileReceiver <|-- PipeFileReceiver
+
+FileReceiver *-- IpcCommandReceiver
+IpcCommandReceiver *-- UnixDomainSocketServer
+IpcCommandReceiver <|-- IpcCommand
+@enduml

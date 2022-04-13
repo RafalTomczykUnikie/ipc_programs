@@ -25,7 +25,7 @@ class ShmFileReceiver : public FileReceiver
 
 public:
     ShmFileReceiver(IpcCommandReceiver *command_receiver, std::string shm_name, std::string semaphore_name_producer, std::string semaphore_name_consumer, uint64_t buffer_size);
-    ~ShmFileReceiver();
+    virtual ~ShmFileReceiver();
     virtual file_rx_agreement_t connectionAgrrement(void);
     virtual file_rx_err_t receiveFile(const char *output_path);
 

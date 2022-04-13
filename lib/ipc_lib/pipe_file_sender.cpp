@@ -10,7 +10,7 @@ PipeFileSender::PipeFileSender(IpcCommandSender *command_sender, std::string pip
     FileSender(command_sender),
     m_pipe_name(pipe_name)
 {
-    auto res = mkfifo(m_pipe_name.c_str(), 0777);
+    mkfifo(m_pipe_name.c_str(), 0777);
 
     m_pipe_receiver_fd = open(m_pipe_name.c_str(), O_WRONLY);
     if(m_pipe_receiver_fd < 0)
@@ -23,6 +23,7 @@ PipeFileSender::PipeFileSender(IpcCommandSender *command_sender, std::string pip
 PipeFileSender::~PipeFileSender()
 {
     close(m_pipe_receiver_fd);
+    remove(m_pipe_name.c_str());
 }
 
 PipeFileSender::file_tx_agreement_t PipeFileSender::connectionAgrrement(std::string file_name, std::string file_extension, size_t file_size)
@@ -138,7 +139,6 @@ PipeFileSender::file_tx_err_t PipeFileSender::sendFile(const char * file_path)
     }
 
     auto s = 0;
-    auto idx = 0ul;
     
     while(1)
     {   
