@@ -24,7 +24,30 @@ git clone git@github.com:RafalTomczykUnikie/ipc_programs.git
 
 # Setup
 
-You can find script in repo that automates environment setup 
+You can find script in repo that automates environment setup:
+
+```bash
+./setup environment.sh
+```
+
+# Building
+
+To build with always cleaning everything:
+```bash
+./build_and_run_tests.sh
+```
+or without cleaning:
+```bash
+./build_and_run_tests_without_clean.sh
+```
+
+you can find programs in **output** directory
+
+```
+output/_____
+            |_ ipc_receiver
+            |_ ipc_sender
+```
 
 # Usage
 
